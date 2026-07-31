@@ -1,5 +1,5 @@
 import { useState } from "react";
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL || "https://ai-resume-boost.onrender.com/api";
 
 export default function ReportModal({ onClose }) {
   const [email, setEmail] = useState("");

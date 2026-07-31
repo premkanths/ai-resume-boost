@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileText, Eye, Calendar, Award, Info, SearchCode } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL || "https://ai-resume-boost.onrender.com/api";
 
 export default function History() {
   const [history, setHistory] = useState([]);

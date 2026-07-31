@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, KeyRound, Mail, User, ShieldAlert, ArrowRight } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL || "https://ai-resume-boost.onrender.com/api";
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);

@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileUp, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL || "https://ai-resume-boost.onrender.com/api";
 
 export default function Landing() {
   const [file, setFile] = useState(null);
