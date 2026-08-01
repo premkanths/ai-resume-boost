@@ -75,9 +75,14 @@ export default function Landing() {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${API_BASE}/resumes/${jobId}/status`);
+        if (!res.ok) {
+          throw new Error("Analysis tracking lost. Server may have restarted.");
+        }
         const data = await res.json();
 
-        setProgress((prev) => Math.max(prev, data.progress));
+        if (data.progress !== undefined && !isNaN(data.progress)) {
+          setProgress((prev) => Math.max(prev, data.progress));
+        }
 
         if (data.status === "completed") {
           clearInterval(interval);
@@ -107,7 +112,7 @@ export default function Landing() {
       } catch (err) {
         clearInterval(interval);
         console.error(err);
-        setError("Connection error to server.");
+        setError("Connection error or session timeout. Please try again.");
         setProgress(0);
         setLoading(false);
       }

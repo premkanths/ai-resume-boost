@@ -1,6 +1,33 @@
 import { logger } from "../utils/logger.js";
 
 /* =========================
+   LIGHTWEIGHT PRE-PROCESSING PASS FOR JOB DESCRIPTION
+========================= */
+const summarizeJobDescription = async (jd) => {
+  if (!jd || jd.trim().length < 100) return jd;
+  
+  // If the description is short, no need to compress it
+  if (jd.split(/\s+/).length < 200) return jd;
+
+  const prompt = `
+  You are an expert technical recruiter. Your task is to extract only the core requirements, required technologies, and key candidate responsibilities from the following Job Description.
+  Exclude all company background, perks, location details, benefits, and boilerplate legal text.
+  Return only a concise, bulleted list of technical/soft skills and core responsibilities, under 200 words.
+  
+  Job Description:
+  ${jd}
+  `;
+
+  try {
+    const rawSummary = await callGemini(prompt);
+    return rawSummary.trim();
+  } catch (err) {
+    console.warn("[JD Optimizer Warning] Failed to summarize JD, using original:", err.message);
+    return jd; // Fallback to original
+  }
+};
+
+/* =========================
    SAFE JSON EXTRACTION
 ========================= */
 const extractJSON = (text) => {
@@ -99,26 +126,26 @@ Instructions:
 
 2. summary : ${
   jobDescription
-    ? `Provide a professional evaluation of the candidate's fit for this specific job, summarizing major gaps and strong matches.`
-    : `Be concise, factual, and professional. Mention overall strength, potential role fit, and atsScore interpretation (e.g., "Good ATS score but lacks specific tools").`
+    ? `Provide a professional evaluation of the candidate's fit for this specific job, summarizing major gaps and strong matches. Maximum 2-3 sentences.`
+    : `Be concise, factual, and professional. Mention overall strength, potential role fit, and atsScore interpretation (e.g., "Good ATS score but lacks specific tools"). Maximum 2 sentences.`
 }
 
-3. skills : Extract only skills explicitly mentioned (e.g., "Python", "Project Management", "Data Analysis"). Do not infer.
+3. skills : Extract only skills explicitly mentioned (e.g., "Python", "Project Management", "Data Analysis"). Do not infer. Maximum 15 items.
 
 4. missingSkills : ${
   jobDescription
-    ? `Identify key keywords, technical skills, tools, or qualifications specified in the Job Description that are absent in the candidate's resume.`
-    : `Based on the resume's industry/role (e.g., data science → missing "SQL", "TensorFlow"; marketing → missing "SEO", "Google Analytics"). If role ambiguous, list common missing skills from similar resumes.`
+    ? `Identify key keywords, technical skills, tools, or qualifications specified in the Job Description that are absent in the candidate's resume. Maximum 8 items.`
+    : `Based on the resume's industry/role (e.g., data science → missing "SQL", "TensorFlow"; marketing → missing "SEO", "Google Analytics"). If role ambiguous, list common missing skills from similar resumes. Maximum 8 items.`
 }
 
-5. strengths : Focus on quantifiable achievements, clear sectioning, keyword optimization, and relevant experience.
+5. strengths : Focus on quantifiable achievements, clear sectioning, keyword optimization, and relevant experience. Maximum 3 items.
 
-6. keyHighlights : Quote or paraphrase specific accomplishments (e.g., "Increased sales by 40% in 6 months"). Limit to 3-5 items.
+6. keyHighlights : Quote or paraphrase specific accomplishments (e.g., "Increased sales by 40% in 6 months"). Limit to 3 items.
 
 7. improvements : ${
   jobDescription
-    ? `Suggest concrete modifications to the resume to align it better with the Job Description (e.g., adding specific missing keywords, rewriting achievements to match the job responsibilities).`
-    : `Suggest concrete fixes: add a professional summary, quantify bullet points, include missing keywords, reformat dates, remove irrelevant experience, etc.`
+    ? `Suggest concrete modifications to the resume to align it better with the Job Description (e.g., adding specific missing keywords, rewriting achievements to match the job responsibilities). Maximum 4 items.`
+    : `Suggest concrete fixes: add a professional summary, quantify bullet points, include missing keywords, reformat dates, remove irrelevant experience, etc. Maximum 4 items.`
 }
 
 8. parsedProfile : Extract candidate's raw profile details:
@@ -127,8 +154,8 @@ Instructions:
    - email: Candidate's email address.
    - phone: Candidate's contact phone number.
    - location: Candidate's city/country location.
-   - experience: Extract work experience history blocks as a single structured multiline string.
-   - education: Extract education degree details.
+   - experience: Extract work experience history blocks as a single structured multiline string. Keep it clean and short.
+   - education: Extract education degree details. Keep it clean and short.
 
 Important:
 - Use double quotes for all strings and keys.
@@ -205,8 +232,16 @@ const callGemini = async (prompt) => {
  ========================= */
 export const analyzeResume = async (resumeText, fileMeta = {}, jobDescription = "") => {
   try {
-    // Extend timeout to 45000 ms to handle higher latency when evaluating job descriptions
-    const raw = await withTimeout(callGemini(buildPrompt(resumeText, jobDescription)), 45000);
+    // 1. Pre-process and compress the Job Description if it is very long.
+    // Extracts core technical skills/duties under 200 words, removing fluff.
+    let optimizedJD = jobDescription;
+    if (jobDescription && jobDescription.trim().length > 0) {
+      console.log("[JD Optimizer] Summarizing raw job description...");
+      optimizedJD = await summarizeJobDescription(jobDescription);
+    }
+
+    // 2. Run the main analysis with a 45-second timeout window.
+    const raw = await withTimeout(callGemini(buildPrompt(resumeText, optimizedJD)), 45000);
 
     let parsed = extractJSON(raw);
 
