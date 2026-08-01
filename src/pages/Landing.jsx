@@ -7,12 +7,35 @@ const API_BASE = import.meta.env.VITE_API_URL || "https://ai-resume-boost.onrend
 export default function Landing() {
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const fileInputRef = useRef();
   const navigate = useNavigate();
+
+  const ROLE_TEMPLATES = {
+    software_engineer: `Design, develop, test, and maintain high-quality software applications. Write clean, efficient, and reusable code following industry best practices. Work with databases, RESTful APIs, and version control (Git/GitHub). Strong knowledge of Data Structures & Algorithms, OOP, DBMS, Operating Systems, and Computer Networks. Good problem-solving and communication skills.`,
+    
+    frontend_developer: `Build responsive, user-friendly, and interactive web applications using React.js, HTML, CSS, and modern frontend frameworks. Integrate RESTful APIs, manage application state (Redux/Context), write clean UI components, and collaborate on user interface layout and design workflows.`,
+    
+    data_analyst: `Analyze requirements and deliver data-driven business insights. Query databases using SQL, perform statistical analysis with Python/R, build interactive visualization reports (Tableau/PowerBI), clean and manage application data, and communicate key highlights to stakeholders.`,
+    
+    electrical_engineer: `Design, test, and maintain electrical systems, circuits, microcontrollers, and hardware components. Work with embedded systems, MATLAB, and PCB layout tools. Debug and troubleshoot hardware defects, analyze circuit designs, and ensure hardware quality.`,
+    
+    product_manager: `Analyze market requirements, define product specs, and collaborate with engineering teams. Manage product roadmaps, coordinate cross-functional teams, participate in project planning, write user stories, and lead agile review workflows.`
+  };
+
+  const handleRoleChange = (e) => {
+    const roleKey = e.target.value;
+    setSelectedRole(roleKey);
+    if (roleKey && ROLE_TEMPLATES[roleKey]) {
+      setJobDescription(ROLE_TEMPLATES[roleKey]);
+    } else {
+      setJobDescription("");
+    }
+  };
 
   // Handle file selection
   const handleFile = (selectedFile) => {
@@ -217,13 +240,33 @@ export default function Landing() {
             )}
           </div>
 
-          {/* JOB DESCRIPTION INPUT */}
+          {/* JOB ROLE PRESET DROPDOWN */}
           <div className="mt-6">
+            <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 block mb-2">
+              Target Job Role Preset (Optional)
+            </label>
+            <select
+              value={selectedRole}
+              onChange={handleRoleChange}
+              disabled={loading}
+              className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 text-sm focus:outline-none focus:border-indigo-600 focus:bg-white dark:focus:bg-zinc-900 transition duration-150 font-medium text-zinc-800 dark:text-zinc-200"
+            >
+              <option value="">-- General Analysis (No specific job description) --</option>
+              <option value="software_engineer">Software Engineer</option>
+              <option value="frontend_developer">Frontend Developer</option>
+              <option value="data_analyst">Data Analyst</option>
+              <option value="electrical_engineer">Electrical Engineer</option>
+              <option value="product_manager">Product Manager</option>
+            </select>
+          </div>
+
+          {/* JOB DESCRIPTION INPUT */}
+          <div className="mt-4">
             <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 block mb-2">
               Job Description (Optional)
             </label>
             <textarea
-              placeholder="Paste the target job description here to calculate a specific match score and identify keyword gaps..."
+              placeholder="Paste the target job description here, or select a preset role above, to calculate a specific match score and identify keyword gaps..."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               disabled={loading}
