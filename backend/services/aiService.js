@@ -10,7 +10,17 @@ const extractJSON = (text) => {
 
     if (first === -1 || last === -1) return null;
 
-    const jsonString = text.slice(first, last + 1);
+    let jsonString = text.slice(first, last + 1);
+
+    // Clean potential raw unescaped control characters inside strings
+    // replacing them with correct escaped JSON sequences to prevent parsing crashes.
+    jsonString = jsonString.replace(/[\u0000-\u001F]+/g, (match) => {
+      if (match === "\n") return "\\n";
+      if (match === "\r") return "\\r";
+      if (match === "\t") return "\\t";
+      return "";
+    });
+
     return JSON.parse(jsonString);
   } catch {
     return null;
@@ -189,9 +199,42 @@ const callGemini = async (prompt) => {
  ========================= */
 export const analyzeResume = async (resumeText, fileMeta = {}, jobDescription = "") => {
   try {
-    const raw = await withTimeout(callGemini(buildPrompt(resumeText, jobDescription)), 20000);
+    // Extend timeout to 45000 ms to handle higher latency when evaluating job descriptions
+    const raw = await withTimeout(callGemini(buildPrompt(resumeText, jobDescription)), 45000);
 
-    const parsed = extractJSON(raw);
+    let parsed = extractJSON(raw);
+
+    // Defensive parsing normalizer to fix minor variations in LLM JSON format outputs
+    if (parsed) {
+      // 1. Ensure atsScore is a valid number
+      if (typeof parsed.atsScore === "string") {
+        parsed.atsScore = parseInt(parsed.atsScore.replace(/[^0-9]/g, ""), 10) || 0;
+      } else if (typeof parsed.atsScore !== "number") {
+        parsed.atsScore = 0;
+      }
+
+      // 2. Ensure summary is a string
+      if (typeof parsed.summary !== "string") {
+        parsed.summary = String(parsed.summary || "");
+      }
+
+      // 3. Ensure array formats are standard lists of strings
+      const ensureArray = (val) => {
+        if (Array.isArray(val)) {
+          return val.map(String);
+        }
+        if (typeof val === "string") {
+          return val.split(/\n|,/).map(s => s.trim().replace(/^•\s*/, "")).filter(Boolean);
+        }
+        return [];
+      };
+
+      parsed.skills = ensureArray(parsed.skills);
+      parsed.missingSkills = ensureArray(parsed.missingSkills);
+      parsed.strengths = ensureArray(parsed.strengths);
+      parsed.keyHighlights = ensureArray(parsed.keyHighlights);
+      parsed.improvements = ensureArray(parsed.improvements);
+    }
 
     if (!parsed || !validateResponse(parsed)) {
       console.error("DEBUG: Raw AI Response that failed validation:\n", raw);
