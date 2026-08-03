@@ -164,6 +164,43 @@ export default function ModifyResume() {
   };
 
   // Export actions
+  const downloadDOCX = () => {
+    if (!editor) return;
+    const html = editor.getHTML();
+    const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' 
+        xmlns:w='urn:schemas-microsoft-com:office:word' 
+        xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>Exported Resume</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
+            h1 { font-size: 24pt; margin-bottom: 6pt; color: #4f46e5; }
+            h2 { font-size: 18pt; margin-top: 12pt; margin-bottom: 6pt; color: #1f2937; }
+            h3 { font-size: 14pt; margin-top: 12pt; margin-bottom: 6pt; }
+            p { margin-bottom: 8pt; }
+            ul, ol { margin-bottom: 8pt; padding-left: 20pt; }
+            li { margin-bottom: 3pt; }
+            blockquote { border-left: 3px solid #4f46e5; padding-left: 10px; color: #6b7280; font-style: italic; }
+          </style>
+        </head>
+        <body>`;
+    const footer = "</body></html>";
+    const sourceHTML = header + html + footer;
+
+    const blob = new Blob(['\ufeff', sourceHTML], {
+      type: 'application/msword'
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${file?.name?.replace(/\.[^/.]+$/, "") || "resume"}_modified.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowDownloadMenu(false);
+  };
+
   const downloadHTML = () => {
     if (!editor) return;
     const html = editor.getHTML();
@@ -491,6 +528,12 @@ export default function ModifyResume() {
                 {/* DROPDOWN MENU */}
                 {showDownloadMenu && (
                   <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                    <button
+                      onClick={downloadDOCX}
+                      className="w-full text-left px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-300 border-b border-zinc-100 dark:border-zinc-800"
+                    >
+                      Download as Word (.docx)
+                    </button>
                     <button
                       onClick={downloadHTML}
                       className="w-full text-left px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-300 border-b border-zinc-100 dark:border-zinc-800"
