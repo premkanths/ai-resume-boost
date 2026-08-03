@@ -359,7 +359,8 @@ export default function Templates() {
   ];
 
   const handleUseTemplate = (preset) => {
-    localStorage.setItem("editorResumeData", JSON.stringify(preset.data));
+    const username = localStorage.getItem("username") || "Guest";
+    localStorage.setItem(`editorResumeData_${username}`, JSON.stringify(preset.data));
     localStorage.setItem("selectedTemplateId", preset.id);
     navigate("/editor");
   };

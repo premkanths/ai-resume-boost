@@ -1,5 +1,5 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Sparkles, History, Settings, FileText, LogOut, GitBranch, FileEdit } from "lucide-react";
+import { LayoutDashboard, Sparkles, History, Settings, FileText, LogOut, GitBranch, FileEdit, FileUp } from "lucide-react";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -33,6 +33,12 @@ export default function Sidebar() {
       name: "Create Resume",
       path: "/templates",
       icon: FileEdit,
+      disabled: false,
+    },
+    {
+      name: "Modify Resume",
+      path: "/modify",
+      icon: FileUp,
       disabled: false,
     },
     {

@@ -14,6 +14,7 @@ import History from "./pages/History";
 import Roadmaps from "./pages/Roadmaps";
 import Templates from "./pages/Templates";
 import CanvasEditor from "./pages/CanvasEditor";
+import ModifyResume from "./pages/ModifyResume";
 
 function AppLayout() {
   const location = useLocation();
@@ -54,6 +55,7 @@ function AppLayout() {
             <Route path="/history" element={<History />} />
             <Route path="/roadmaps" element={<Roadmaps />} />
             <Route path="/templates" element={<Templates />} />
+            <Route path="/modify" element={<ModifyResume />} />
             <Route path="/editor" element={<CanvasEditor />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/terms" element={<Terms />} />

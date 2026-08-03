@@ -1,4 +1,3 @@
-import Footer from "../components/Footer";
 import ScoreCard from "../components/Result_Page/ScoreCard";
 import Skills from "../components/Result_Page/Skills";
 import MissingSkills from "../components/Result_Page/MissingSkills";
@@ -187,7 +186,6 @@ export default function Result() {
         </main>
       </div>
 
-      <Footer />
     </div>
   );
 }
