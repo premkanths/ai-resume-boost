@@ -256,3 +256,32 @@ async function extractWithOCR(buffer) {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 } */
+
+export const extractHtml = async (file) => {
+  const mime = file.mimetype;
+
+  // DOCX
+  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    try {
+      const result = await mammoth.convertToHtml({
+        buffer: file.buffer,
+      });
+      return result.value;
+    } catch (err) {
+      throw new Error("DOCX_HTML_PARSE_ERROR: " + (err?.message || JSON.stringify(err)));
+    }
+  }
+
+  // PDF
+  if (mime === "application/pdf") {
+    const text = await extractText(file);
+    // Convert newlines to HTML paragraphs for Tiptap
+    const paragraphs = text
+      .split(/\n\n+/)
+      .map((p) => `<p>${p.trim().replace(/\n/g, "<br/>")}</p>`)
+      .join("");
+    return paragraphs;
+  }
+
+  throw new Error("Unsupported file type");
+};

@@ -1,4 +1,4 @@
-import { extractText } from "../utils/parser.js";
+import { extractText, extractHtml } from "../utils/parser.js";
 import { logger } from "../utils/logger.js";
 import { analyzeResume } from "../services/aiService.js";
 import { v4 as uuidv4 } from "uuid";
@@ -171,8 +171,8 @@ export const extractResumeText = async (req, res) => {
       return res.status(400).json({ error: "Unsupported File Type" });
     }
 
-    const text = await extractText(file);
-    res.json({ text });
+    const html = await extractHtml(file);
+    res.json({ html });
   } catch (err) {
     console.error("TEXT EXTRACTION ERROR:", err);
     res.status(500).json({ error: "Failed to extract text from resume: " + err.message });
