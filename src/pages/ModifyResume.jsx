@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileUp, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
+import { FileUp, Sparkles, AlertCircle } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://ai-resume-boost.onrender.com/api";
 
@@ -38,127 +38,75 @@ export default function ModifyResume() {
     setProgress(0);
   };
 
-  // Trigger Parsing
+  // Trigger text extraction (Direct, no AI analysis)
   const startParsing = async () => {
     if (!file) return;
 
     setLoading(true);
-    setProgress(5); // Immediate feedback
+    setProgress(15);
+    setError("");
+
+    // Simulate progress ticks
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 15;
+      });
+    }, 120);
 
     try {
-      const username = localStorage.getItem("username") || "Guest";
       const formData = new FormData();
       formData.append("resume", file);
-      formData.append("jobDescription", ""); // Empty since we're just modifying, not comparing
-      formData.append("userId", username);
 
-      const res = await fetch(`${API_BASE}/resumes`, {
+      const res = await fetch(`${API_BASE}/resumes/extract-text`, {
         method: "POST",
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
+      clearInterval(progressInterval);
 
-      const { jobId } = await res.json();
-      pollStatus(jobId);
+      if (!res.ok) {
+        throw new Error("Failed to extract text from resume");
+      }
+
+      const data = await res.json();
+      setProgress(100);
+
+      // Load text straight to canvas blocks
+      handleMigrateToCanvas(data.text || "");
 
     } catch (err) {
       console.error(err);
-      setError("Upload failed, please try again.");
+      setError(err.message || "Failed to parse text. Please try again.");
+      setProgress(0);
       setLoading(false);
     }
   };
 
-  // Poll status from backend
-  const pollStatus = (jobId) => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`${API_BASE}/resumes/${jobId}/status`);
-        if (!res.ok) {
-          throw new Error("Parsing tracking lost.");
-        }
-        const data = await res.json();
-
-        if (data.progress !== undefined && !isNaN(data.progress)) {
-          setProgress((prev) => Math.max(prev, data.progress));
-        }
-
-        if (data.status === "completed") {
-          clearInterval(interval);
-          
-          if (data.result?.status === 0) {
-            setProgress(0);
-            setLoading(false);
-            alert("AI Parsing failed, please try again...");
-            return;
-          }
-
-          // Save the analysis globally in history/results as well
-          localStorage.setItem("analysis", JSON.stringify(data.result));
-          
-          // Migrate straight to editor
-          handleMigrateToCanvas(data.result);
-        }
-
-        if (data.status === "failed") {
-          clearInterval(interval);
-          if (data.error === "Unsupported File Type") {
-            setError("Processing failed - Unsupported File Type!");
-          } else {
-            setError("Processing failed, please try again.");
-          }
-          setProgress(0);
-          setLoading(false);
-        }
-
-      } catch (err) {
-        clearInterval(interval);
-        console.error(err);
-        setError("Connection error or session timeout. Please try again.");
-        setProgress(0);
-        setLoading(false);
-      }
-    }, 800);
-  };
-
-  // Map parsed resume profile structure straight to canvas editor blocks
-  const handleMigrateToCanvas = (resultData) => {
+  // Load the raw text directly onto canvas editor blocks without any AI manipulation
+  const handleMigrateToCanvas = (rawText) => {
     const username = localStorage.getItem("username") || "Guest";
-    const profile = resultData.parsedProfile || {};
+    const nameLabel = username.toUpperCase().replace(".", " ");
 
-    const nameLabel = profile.name || username.toUpperCase().replace(".", " ");
-    const titleLabel = profile.title || "PROFESSIONAL CANDIDATE";
-    const contactInfo = `${profile.phone || "+123-456-7890"}  •  ${profile.email || "email@site.com"}  •  ${profile.location || "City, Country"}`;
-    
-    // Auto populate parsed sections matching their uploaded resume text
+    // Clean and convert text newlines to HTML <br/> tags for canvas editor block rendering
+    const formattedText = rawText
+      .replace(/\r\n/g, "\n")
+      .replace(/\n\n+/g, "\n\n")
+      .replace(/\n/g, "<br/>")
+      .trim();
+
     const migratedBlocks = [
-      // Name header
-      { id: "mig_name", type: "title", text: nameLabel, x: 50, y: 50, width: 694, textColor: "#4f46e5" },
-      { id: "mig_title", type: "subtitle", text: titleLabel, x: 50, y: 95, width: 694, textColor: "#71717a" },
-      { id: "mig_contact", type: "paragraph", text: contactInfo, x: 50, y: 120, width: 694 },
-      
-      // Professional Summary Section
-      { id: "mig_sum_t", type: "heading", text: "PROFESSIONAL SUMMARY", x: 50, y: 165, width: 694, textColor: "#18181b" },
-      { id: "mig_sum_b", type: "paragraph", text: profile.summary || resultData.summary || "Click to edit summary...", x: 50, y: 190, width: 694 },
-      
-      // Core Skills Section
-      { id: "mig_skills_t", type: "heading", text: "CORE EXPERTISE & SKILLS", x: 50, y: 310, width: 330, textColor: "#18181b" },
-      { id: "mig_skills_b", type: "paragraph", text: resultData.skills && resultData.skills.length > 0 
-          ? resultData.skills.map(s => `• ${s}`).join("\n")
-          : "• Project Architecture\n• Technical Engineering\n• Problem Solving", x: 50, y: 335, width: 330 },
-      
-      // Education Section
-      { id: "mig_edu_t", type: "heading", text: "EDUCATION BACKGROUND", x: 420, y: 310, width: 320, textColor: "#18181b" },
-      { id: "mig_edu_b", type: "paragraph", text: profile.education || "Bachelor of Science in Computer Science\nUniversity of Technology", x: 420, y: 335, width: 320 },
-      
-      // Work Experience Section
-      { id: "mig_exp_t", type: "heading", text: "WORK EXPERIENCE HISTORY", x: 50, y: 510, width: 694, textColor: "#18181b" },
-      { id: "mig_exp_b", type: "paragraph", text: profile.experience || "Senior Systems Engineer — Enterprise Corp (2022 - Present)\n• Designed scalable service architectures.\n• Streamlined deployments reducing latency.", x: 50, y: 535, width: 694 }
+      { id: "mod_name", type: "title", text: nameLabel, x: 50, y: 50, width: 694, textColor: "#4f46e5" },
+      { id: "mod_subtitle", type: "subtitle", text: "MY IMPORTED RESUME", x: 50, y: 95, width: 694, textColor: "#71717a" },
+      { id: "mod_text", type: "paragraph", text: formattedText || "Double-click to insert resume text details...", x: 50, y: 140, width: 694 }
     ];
 
     // Save and load directly on editor under username isolation key
     localStorage.setItem(`editorResumeData_${username}`, JSON.stringify({ isFreestyle: true, blocks: migratedBlocks }));
-    localStorage.setItem("selectedTemplateId", "blank-canvas"); // Load on blank canvas so it shows clean
+    localStorage.setItem("selectedTemplateId", "blank-canvas"); // Open Canvas directly
     navigate("/editor");
   };
 
@@ -184,7 +132,7 @@ export default function ModifyResume() {
             Upload & Edit Resume
           </h1>
           <p className="text-gray-500 dark:text-zinc-400 mt-2">
-            Upload a PDF or DOCX file. Our AI parser will extract the details and load them directly into our Canvas Editor.
+            Upload your existing PDF or DOCX file to open and modify its text details directly on our Canvas Editor.
           </p>
         </div>
 
@@ -246,7 +194,7 @@ export default function ModifyResume() {
             {loading && (
               <div className="mt-8 max-w-md mx-auto">
                 <div className="flex items-center justify-between text-xs font-semibold mb-1.5 text-indigo-600 dark:text-indigo-400">
-                  <span>Extracting resume details...</span>
+                  <span>Importing resume details...</span>
                   <span>{progress}%</span>
                 </div>
                 <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
@@ -275,7 +223,7 @@ export default function ModifyResume() {
                 className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/10 transition-all duration-200 flex items-center gap-2 group hover:scale-[1.01]"
               >
                 <Sparkles size={16} className="text-indigo-200 group-hover:animate-pulse" />
-                Parse & Open Editor
+                Open in Canvas Editor
               </button>
             </div>
           )}

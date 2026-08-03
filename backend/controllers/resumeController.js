@@ -153,3 +153,28 @@ export const getHistory = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch history" });
   }
 };
+
+export const extractResumeText = async (req, res) => {
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  try {
+    const filetype = await fileTypeFromBuffer(file.buffer);
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ];
+    if (!filetype || !allowedTypes.includes(filetype.mime)) {
+      return res.status(400).json({ error: "Unsupported File Type" });
+    }
+
+    const text = await extractText(file);
+    res.json({ text });
+  } catch (err) {
+    console.error("TEXT EXTRACTION ERROR:", err);
+    res.status(500).json({ error: "Failed to extract text from resume: " + err.message });
+  }
+};

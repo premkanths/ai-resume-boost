@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { createResume, getStatus, getHistory } from "../controllers/resumeController.js";
+import { createResume, getStatus, getHistory, extractResumeText } from "../controllers/resumeController.js";
 
 const router = express.Router();
 
@@ -11,6 +11,7 @@ const upload = multer({
 });
 
 router.post("/", upload.single("resume"), createResume);
+router.post("/extract-text", upload.single("resume"), extractResumeText);
 router.get("/history", getHistory);
 router.get("/:jobId/status", getStatus);
 
